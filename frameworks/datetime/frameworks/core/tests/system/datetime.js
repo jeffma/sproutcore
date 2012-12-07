@@ -229,8 +229,8 @@ test('compare', function() {
 
 test('Format', function() {
   equals(
-    dt.toFormattedString('%a %A %b %B %d %D %h %H %I %j %m %M %p %S %w %y %Y %%a'),
-    'Sat Saturday Jun June 08 8 4 04 04 159 06 00 AM 22 6 85 1985 %a');
+    dt.toFormattedString('%a %A %b %B %d %D %h %H %I %j %m %M %p %S %w %y %Y %%a %E %e'),
+    'Sat Saturday Jun June 08 8 4 04 04 159 06 00 AM 22 6 85 1985 %a  ');
   
   equals(dt.toFormattedString('%Z'), formatTimezone(dt.get('timezone')));
   equals(dt.adjust({ timezone:    0 }).toFormattedString('%Y-%m-%d %H:%M:%S %Z'), '1985-06-08 05:00:22 +00:00');
@@ -401,4 +401,26 @@ test('extend', function() {
   // Should parse and produce a date object that is an instance of 'dateTimeExt'
   var parsedDateTimeExt = dateTimeExt.parse('2011-10-15T21:30:00Z');
   ok(SC.instanceOf(parsedDateTimeExt, dateTimeExt), 'Correctly produced an instance of the extended type.');
+});
+
+/**
+ * This test trims out milliseconds, because time marches on during the unit
+ * test.
+ */
+test('elapsed', function() {
+  var dateTimeTest = SC.DateTime.create();
+  equals(Math.round(dateTimeTest.get('elapsed') / 1000), 0);
+  
+  // Modify the current time by 20 seconds;
+  dateTimeTest = SC.DateTime.create().advance({
+    second: -20
+  });
+  equals(Math.round(dateTimeTest.get('elapsed') / 1000), 20);
+  
+  // Modify the current time by -120 seconds;
+  dateTimeTest = SC.DateTime.create().advance({
+    second: 120
+  });
+  equals(Math.round(dateTimeTest.get('elapsed') / 1000), -120);
+  
 });

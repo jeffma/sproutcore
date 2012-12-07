@@ -289,6 +289,7 @@ SC.DateTime = SC.Object.extend(SC.Freezable, SC.Copyable,
       - `millisecond`
       - `milliseconds`, the number of milliseconds since
         January, 1st 1970 00:00:00.0 UTC
+      - `elapsed`, the number of milliseconds until (-), or since (+), the date.
       - `isLeapYear`, a boolean value indicating whether the receiver's year
         is a leap year
       - `daysInMonth`, the number of days of the receiver's current month
@@ -320,6 +321,10 @@ SC.DateTime = SC.Object.extend(SC.Freezable, SC.Copyable,
       - %c -- The preferred local date and time representation
       - %d -- Day of the month (01..31)
       - %D -- Day of the month (0..31)
+      - %e -- The calculated elapsed time integer for the smallest relevant time interval.
+          Note that this is a special formatting character, and will only be recognized in
+          combination with the %E formatter.
+      - %E -- Elapsed time, according to localized text formatting strings. See below.
       - %h -- Hour of the day, 24-hour clock (0..23)
       - %H -- Hour of the day, 24-hour clock (00..23)
       - %i -- Hour of the day, 12-hour clock (1..12)
@@ -343,6 +348,18 @@ SC.DateTime = SC.Object.extend(SC.Freezable, SC.Copyable,
       - %Y -- Year with century
       - %Z -- Time zone (ISO 8601 formatted)
       - %% -- Literal ``%'' character
+
+    The Elapsed date format is a special, SproutCore specific formatting
+    feature which will return an accurate-ish, human readable indication
+    of elapsed time. For example, it might return "In a minute", or "A year
+    ago". To customize the output for this formatter, override the date
+    localization strings in your app. It is only in this special case that
+    the "%e" parameter will be recognized; it will be replaced with the number
+    of intervals (seconds, minutes, weeks, etc) that are appropriate.
+    
+    Examples when using %E:
+      - "_SC.DateTime.secondsIn" -> "In %e seconds" -> "In 20 seconds"
+      - "_SC.DateTime.dayIn" -> "Tomorrow at %i:%M %p" -> "Tomorrow at 11:23 AM"
 
     @param {String} format the format string
     @return {String} the formatted string
@@ -673,6 +690,9 @@ SC.DateTime.mixin(SC.Comparable,
         case 'millisecond':
           v = d.getUTCMilliseconds();
           break;
+        case 'elapsed':
+          v = +new Date() - d.getTime() - (timezone * 60000);
+          break;
       }
 
       // isLeapYear
@@ -949,6 +969,8 @@ SC.DateTime.mixin(SC.Comparable,
           case 'c': throw "%c is not implemented";
           case 'd':
           case 'D': opts.day = scanner.scanInt(1, 2); break;
+          case 'e': throw "%e is not implemented";
+          case 'E': throw "%E is not implemented";
           case 'h':
           case 'H': opts.hour = scanner.scanInt(1, 2); break;
           case 'i':
@@ -1043,6 +1065,8 @@ SC.DateTime.mixin(SC.Comparable,
       case 'c': return this._date.toString();
       case 'd': return this._pad(this._get('day'));
       case 'D': return this._get('day');
+      case 'e': ''; // Recognized only in the context of %E
+      case 'E': return this._toFormattedString(this.__getElapsedStringFormat(start, timezone), start, timezone);
       case 'h': return this._get('hour');
       case 'H': return this._pad(this._get('hour'));
       case 'i':
@@ -1086,10 +1110,18 @@ SC.DateTime.mixin(SC.Comparable,
     // need to move into local time zone for these calculations
     this._setCalcState(start - (timezone * 60000), 0); // so simulate a shifted 'UTC' time
 
-    return format.replace(/\%([aAbBcdDhHiIjmMpsSUWwxXyYZ\%])/g, function() {
+    return format.replace(/\%([aAbBcdeEDhHiIjmMpsSUWwxXyYZ\%])/g, function() {
       var v = that.__toFormattedString.call(that, arguments, start, timezone);
       return v;
     });
+  },
+  
+  /**
+    @private
+    @see SC.DateTime#toFormattedString
+   */
+  __getElapsedStringFormat: function(start, timezone) {
+    return "";
   },
 
   /**
