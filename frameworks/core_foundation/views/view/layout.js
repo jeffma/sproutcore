@@ -69,9 +69,6 @@ SC.View.reopen(
   init: function(original) {
     original();
 
-    // TODO: This makes it impossible to override
-    this.layoutStyleCalculator = SC.View.LayoutStyleCalculator.create({ view: this });
-
     this._previousLayout = this.get('layout');
   }.enhance(),
 
@@ -783,33 +780,15 @@ SC.View.reopen(
         didResize      = YES,
         previousWidth, previousHeight, currentWidth, currentHeight;
 
-
-    // Handle old style rotation
+    // Handle old style rotation.
     if (!SC.none(currentLayout.rotate)) {
+      //@if(debug)
+      SC.Logger.warn('Developer Warning: Please set rotateX instead of rotate.');
+      //@endif
       if (SC.none(currentLayout.rotateX)) {
         currentLayout.rotateX = currentLayout.rotate;
-        SC.Logger.warn('Please set rotateX instead of rotate');
       }
-    }
-    if (!SC.none(currentLayout.rotateX)) {
-      currentLayout.rotate = currentLayout.rotateX;
-    } else {
       delete currentLayout.rotate;
-    }
-
-    var animations = currentLayout.animations;
-    if (animations) {
-      if (!SC.none(animations.rotate)) {
-        if (SC.none(animations.rotateX)) {
-          animations.rotateX = animations.rotate;
-          SC.Logger.warn('Please animate rotateX instead of rotate');
-        }
-      }
-      if (!SC.none(animations.rotateX)) {
-        animations.rotate = animations.rotateX;
-      } else {
-        delete animations.rotate;
-      }
     }
 
     if (previousLayout  &&  previousLayout !== currentLayout) {
@@ -824,24 +803,24 @@ SC.View.reopen(
           previousHeight = previousLayout.height;
           if (previousLayout !== undefined) {
             currentHeight = currentLayout.height;
-            if (previousHeight === currentHeight) didResize = NO;
+            if (previousHeight === currentHeight) {
+              didResize = NO;
+            }
           }
         }
       }
     }
 
-    this.beginPropertyChanges() ;
-    this.notifyPropertyChange('hasAcceleratedLayer');
-    this.notifyPropertyChange('layoutStyle') ;
     if (didResize) {
       this.viewDidResize();
-    }
-    else {
+    } else {
       // Even if we didn't resize, our frame might have changed.
       // viewDidResize() handles this in the other case.
       this._viewFrameDidChange();
     }
-    this.endPropertyChanges() ;
+
+    // Notify that the layout style has changed.
+    this.notifyPropertyChange('layoutStyle');
 
     // notify layoutView...
     var layoutView = this.get('layoutView');
@@ -968,9 +947,8 @@ SC.View.reopen(
     @test in layoutChildViews
   */
   renderLayout: function(context, firstTime) {
-    this.get('layoutStyleCalculator').willRenderAnimations();
-    context.addStyle(this.get('layoutStyle'));
-    this.get('layoutStyleCalculator').didRenderAnimations();
+    context.setStyle(this.get('layoutStyle'));
+    this.didRenderAnimations();
   },
 
   _renderLayerSettings: function(original, context, firstTime) {
@@ -982,8 +960,10 @@ SC.View.reopen(
     original(context);
 
     if (this.get('useStaticLayout')) { context.addClass('sc-static-layout'); }
-    if (this.get('backgroundColor')) {
-      context.css('backgroundColor', this.get('backgroundColor'));
+
+    var backgroundColor = this.get('backgroundColor');
+    if (backgroundColor) {
+      context.setStyle('backgroundColor', backgroundColor);
     }
   }.enhance()
 });

@@ -68,19 +68,19 @@ test("does not change attributes if attrs were not actually changed", function()
 });
 
 test("updates attribute if attrs changed", function() {
-  context.attr('foo', 'changed');
+  context.setAttr('foo', 'changed');
   context.update();
   equals(elem.getAttribute("foo"), "changed", "attribute");
 });
 
 test("adds attribute if new", function() {
-  context.attr('bar', 'baz');
+  context.setAttr('bar', 'baz');
   context.update();
   equals(elem.getAttribute("bar"), "baz", "attribute");
 });
 
 test("removes attribute if value is null", function() {
-  context.attr('foo', null);
+  context.setAttr('foo', null);
   context.update();
   equals(elem.getAttribute("foo"), null, "attribute");
 });
@@ -113,7 +113,7 @@ test("replaces id if edited", function() {
 });
 
 test("set id overrides attr", function() {
-  context.attr("id", "bar");
+  context.setAttr("id", "bar");
   context.id('baz');
   context.update();
   equals(elem.getAttribute("id"), "baz", "should use id");
@@ -135,23 +135,11 @@ module("SC.RenderContext#update - className", {
 });
 
 test("does not change class names if retrieved but not edited", function() {
-  context.classNames();
+  context.classes();
   context.update();
   equals(SC.$(elem).attr("class"), "foo bar", "class");
 });
 
-test("replaces class name if classNames edited", function() {
-  context.classNames('bar baz'.w());
-  context.update();
-  equals(SC.$(elem).attr("class"), "bar baz", "attribute");
-});
-
-test("set class names override class attr", function() {
-  context.attr("class", "bar");
-  context.classNames('baz'.w());
-  context.update();
-  equals(SC.$(elem).attr("class"), "baz", "should use classNames");
-});
 
 // ..........................................................
 // Style Editing
@@ -171,50 +159,50 @@ module("SC.RenderContext#update - style", {
 test("does not change styles if retrieved but not edited", function() {
   context.styles();
   context.update();
-  var style = SC.$(elem).attr("style");
+  var style = SC.$(elem).attr("style").trim();
   if (!style.match(/;$/)) style += ';' ;
 
   equals(style.toLowerCase(), "color: red;", "style");
 });
 
 test("replaces style name if styles edited", function() {
-  context.styles({ color: "black" });
+  context.setStyle({ color: "black" });
   context.update();
 
   // Browsers return single attribute styles differently, sometimes with a trailing ';'
   // sometimes, without one. Normalize it here.
-  var style = SC.$(elem).attr("style");
-  if (!style.match(/;$/)) style += ';' ;
+  var style = SC.$(elem).attr("style").trim();
+  if (!style.match(/;\s{0,1}$/)) style += ';' ;
 
   equals(style.toLowerCase(), "color: black;", "attribute");
 });
 
 
 test("set styles override style attr", function() {
-  context.attr("style", "color: green");
-  context.styles({ color: "black" });
+  context.setAttr("style", "color: green");
+  context.setStyle({ color: "black" });
   context.update();
 
   // Browsers return single attribute styles differently, sometimes with a trailing ';'
   // sometimes, without one. Normalize it here.
-  var style = SC.$(elem).attr("style");
+  var style = SC.$(elem).attr("style").trim();
   if (!style.match(/;$/)) style += ';' ;
 
   equals(style.toLowerCase(), "color: black;", "attribute");
 });
 
 test("set styles handle custom browser attributes", function() {
-  context.styles({ mozColumnCount: '3', webkitColumnCount: '3', oColumnCount: '3', msColumnCount: '3' });
+  context.resetStyles();
+  context.setStyle({ columnCount: '3', mozColumnCount: '3', webkitColumnCount: '3', oColumnCount: '3', msColumnCount: '3' });
   context.update();
 
   // Browsers return single attribute styles differently, sometimes with a trailing ';'
   // sometimes, without one. Normalize it here.
-  var style = SC.$(elem).attr("style");
+  var style = SC.$(elem).attr("style").trim();
   if (!style.match(/;$/)) style += ';' ;
 
   // Older Gecko completely ignores css attributes that it doesn't understand.
-  if(SC.browser.isMozilla &&
-      SC.browser.compare(SC.browser.engineVersion, '2.0') < 0) equals(style, "-moz-column-count: 3;");
-  else if (SC.browser.isIE) equals(style, "-webkit-column-count: 3; -moz-column-count: 3; -o-column-count: 3; -ms-column-count: 3;");
-  else equals(style, "-moz-column-count: 3; -webkit-column-count: 3; -o-column-count: 3; -ms-column-count: 3;");
+  if(SC.browser.isMozilla) equals(style, "-moz-column-count: 3;");
+  else if (SC.browser.isIE) equals(style, "-ms-column-count: 3;");
+  else if (SC.browser.engine === SC.ENGINE.webkit) equals(style, "-webkit-column-count: 3;");
 });

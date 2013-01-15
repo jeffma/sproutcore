@@ -8,7 +8,7 @@
 // View Layout Unit Tests
 // ========================================================================
 
-/*globals module test ok same equals */
+/*global module test ok same equals */
 
 
 /* These unit tests verify:  layout(), frame(), styleLayout() and clippingFrame(). */
@@ -58,7 +58,7 @@
 
     // test
     layoutKeys.forEach(function(key) {
-      testKey = key === 'transform' ? SC.platform.domCSSPrefix+'Transform' : key;
+      testKey = key === 'transform' ? SC.browser.domPrefix + 'Transform' : key;
       equals(layoutStyle[testKey], no_s[key], "STYLE NO PARENT %@".fmt(key));
     });
 
@@ -83,7 +83,7 @@
 
     // test again
     layoutKeys.forEach(function(key) {
-      testKey = key === 'transform' ? SC.platform.domCSSPrefix+'Transform' : key;
+      testKey = key === 'transform' ? SC.browser.domPrefix + 'Transform' : key;
       equals(layoutStyle[testKey], with_s[key], "STYLE W/ PARENT %@".fmt(key));
     });
 
@@ -200,7 +200,7 @@
     var layout = { top: 0, left: 0, width: 'auto', height: 'auto' };
     var no_f = null;
     // See test below
-    var with_f = undefined; // { x: 0, y: 0, width: 200, height: 200 };
+    var with_f; // { x: 0, y: 0, width: 200, height: 200 };
     var s = { top: 0, left: 0, width: 'auto', height: 'auto' };
 
     performLayoutTest(layout, no_f, s, with_f, s, NO);
@@ -306,7 +306,7 @@
     var layout = { top: 0.1, left: 0.1, width: 'auto', height: 'auto' };
     var no_f = null;
     // See pending test below
-    var with_f = undefined; // { x: 20, y: 20, width: 180, height: 180 };
+    var with_f; // { x: 20, y: 20, width: 180, height: 180 };
     var s = { top: '10%', left: '10%', width: 'auto', height: 'auto' };
 
     performLayoutTest(layout, no_f, s, with_f, s, NO);
@@ -339,7 +339,7 @@
   });
 
   function transformFor(view){
-    return view.get('layer').style[SC.platform.domCSSPrefix+'Transform'];
+    return view.get('layer').style[SC.browser.domPrefix + 'Transform'];
   }
 
   test("layout {rotateX}", function() {
@@ -400,7 +400,7 @@
     module('ACCELERATED LAYOUT VARIATIONS', {
       setup: function(){
         commonSetup.setup();
-        child.wantsAcceleratedLayer = YES;
+        child.set('wantsAcceleratedLayer', YES);
       },
 
       teardown: commonSetup.teardown
@@ -415,7 +415,7 @@
       var with_f = { x: 10, y: 10, width: 50, height: 50} ;
 
       performLayoutTest(layout, no_f, s, with_f, s, YES) ;
-    }) ;
+    });
 
     test("layout {top, left, bottom, right}", function() {
 
@@ -445,7 +445,7 @@
       var layout = { top: 0, left: 0, width: 'auto', height: 'auto' };
       var no_f = null;
       // See test below
-      var with_f = undefined; // { x: 0, y: 0, width: 200, height: 200 };
+      var with_f; // { x: 0, y: 0, width: 200, height: 200 };
       var s = { top: 0, left: 0, width: 'auto', height: 'auto', transform: null };
 
       performLayoutTest(layout, no_f, s, with_f, s, NO);
@@ -467,10 +467,6 @@
     }) ;
 
   }
-
-
-
-
 
 
 
@@ -670,7 +666,7 @@
 
     var layout = { top: 0, left: 0, width: 'auto', height: 'auto', border: 2 };
     var no_f = null;
-    var with_f = undefined; //{ x: 2, y: 2, width: 196, height: 196 };
+    var with_f; //{ x: 2, y: 2, width: 196, height: 196 };
     var s = { top: 0, left: 0, width: 'auto', height: 'auto',
               borderTopWidth: 2, borderRightWidth: 2, borderBottomWidth: 2, borderLeftWidth: 2 };
 
@@ -802,4 +798,122 @@
   //
   //
   // });
+
+  var pane, view;
+  module("COMPUTED LAYOUT", {
+    setup: function () {
+
+      SC.run(function () {
+        // create basic view
+        view = SC.View.create({
+          useTopLayout: YES,
+          layout: function () {
+            if (this.get('useTopLayout')) {
+              return { top: 10, left: 10, width: 100, height: 100 };
+            } else {
+              return { bottom: 10, right: 10, width: 200, height: 50 };
+            }
+          }.property('useTopLayout').cacheable()
+        });
+
+        pane = SC.Pane.create({
+          layout: { centerX: 0, centerY: 0, width: 400, height: 400 },
+          childViews: [view]
+        }).append();
+      });
+    },
+
+    teardown: function () {
+      pane.remove();
+      pane = view = null;
+    }
+  });
+
+  /**
+    There was a regression while moving to jQuery 1.8 and removing the seemingly
+    unuseful buffered jQuery code, where updating the style failed to clear the
+    old style from the view's style attribute.
+  */
+  test("with computed layout", function () {
+    var expectedLayoutStyle,
+      expectedStyleAttr,
+      layoutStyle,
+      styleAttr;
+
+    same(view.get('layout'), { top: 10, left: 10, width: 100, height: 100 }, "Test the value of the computed layout.");
+    layoutStyle = view.get('layoutStyle');
+    expectedLayoutStyle = { top: "10px", left: "10px", width: "100px", height: "100px" };
+    for (var key in layoutStyle) {
+      equals(layoutStyle[key], expectedLayoutStyle[key], "Test the value of %@ in the layout style.".fmt(key));
+    }
+    styleAttr = view.$().attr('style');
+    styleAttr = styleAttr.split(/;\s*/).filter(function (o) { return o; });
+    expectedStyleAttr = ['left: 10px', 'width: 100px', 'top: 10px', 'height: 100px'];
+    for (var i = styleAttr.length - 1; i >= 0; i--) {
+      ok(expectedStyleAttr.indexOf(styleAttr[i]) >= 0, "Test the expected style attribute includes `%@` found in the actual style attribute.".fmt(styleAttr[i]));
+    }
+
+    view.set('useTopLayout', NO);
+    SC.run(function () {
+      same(view.get('layout'), { bottom: 10, right: 10, width: 200, height: 50 }, "Test the value of the computed layout.");
+      layoutStyle = view.get('layoutStyle');
+      expectedLayoutStyle = { bottom: "10px", right: "10px", width: "200px", height: "50px" };
+      for (var key in layoutStyle) {
+        equals(layoutStyle[key], expectedLayoutStyle[key], "Test the value of %@ in the layout style.".fmt(key));
+      }
+    });
+
+    styleAttr = view.$().attr('style');
+    styleAttr = styleAttr.split(/;\s*/).filter(function (o) { return o; });
+    expectedStyleAttr = ['bottom: 10px', 'width: 200px', 'right: 10px', 'height: 50px'];
+    for (i = styleAttr.length - 1; i >= 0; i--) {
+      ok(expectedStyleAttr.indexOf(styleAttr[i]) >= 0, "Test the expected style attribute includes `%@` found in the actual style attribute.".fmt(styleAttr[i]));
+    }
+  });
+
+
+  module("OTHER LAYOUT STYLE TESTS", {
+    setup: function () {
+
+      SC.run(function () {
+        // create basic view
+        view = SC.View.create({});
+
+        pane = SC.Pane.create({
+          layout: { centerX: 0, centerY: 0, width: 400, height: 400 },
+          childViews: [view]
+        }).append();
+      });
+    },
+
+    teardown: function () {
+      pane.remove();
+      pane = view = null;
+    }
+  })
+
+
+
+  /*
+    There was a regression where switching from a centered layout to a non-centered
+    layout failed to remove the margin style.
+  */
+  test("Switching from centered to non-centered layouts.", function() {
+    var styleAttr;
+
+    SC.run(function () {
+      view.set('layout', { centerX: 10, centerY: 10, width: 60, height: 60 });
+    });
+
+    SC.run(function () {
+      view.set('layout', { left: 10, top: 10, width: 60, height: 60 });
+    });
+
+    styleAttr = view.$().attr('style');
+    styleAttr = styleAttr.split(/;\s*/).filter(function (o) { return o; });
+    expectedStyleAttr = ['left: 10px', 'top: 10px', 'width: 60px', 'height: 60px'];
+    for (i = styleAttr.length - 1; i >= 0; i--) {
+      ok(expectedStyleAttr.indexOf(styleAttr[i]) >= 0, "Test the expected style attribute includes `%@` found in the actual style attribute.".fmt(styleAttr[i]));
+    }
+  });
 })();
